@@ -1,0 +1,66 @@
+---
+title: "I like to move it, move it: Keeping lemurs happy with R"
+author: Dr. Ludmilla Figueiredo
+output: html_notebook
+---
+
+Here, we are going to use the [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md) dataset provided by the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday) to illustrate:
+
++ data processing with packages from the [Tidyverse](https://www.tidyverse.org)
++ code documentation with RMarkdown and the [minimal set up](https://github.com/ludmillafigueiredo/computational_notebooks) I propose for beginners
+
+
+# Packages and basic set up
+
+In this analysis, we will use the following packages:
+```{r message==FALSE}
+library(tidyverse) # collection of packages for data processing and visualization
+```
+
+Moreover, the files in this project are organized as such:
+```{markdown}
+data_crunch_wue
+|--README.md
+|--lemurs.Rmd
+|--figures
+|--results
+|  |--data
+|  |  |--processed  
+|  |--plots
+|  |--scripts
+```
+
+This file structure adapts the [minimal set up](https://github.com/ludmillafigueiredo/computational_notebooks) I propose for scientific computational projects. 
+The idea is organizing the project around the `.Rmd` file (the `.html` version of which you are reading right now).
+By combining descriptive text code and results of the analysis, this "computational notebook" facilitates communication and reproducibility of the work it reports.
+As part of this set up, inputs and outputs can be acessed with relative paths: 
+```{r}
+processed.dir <- file.path("results", "data", "processed")
+scripts.dir <- file.path("reults", "scripts")
+plots.dir <- file.path("results", "plots")
+```
+
+
+# Original data
+
+As shown in the [dataset page](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md), the original data can be downloaded the git repository:
+```{r}
+lemurs.df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv')
+```
+Already at loading, it seems we come across a parsing error: `read_csv` identified the column `age_of_living_y` as containing characters of type `logical` (it cites the expected values as ``1/0/T/F/TRUE/FALSE`), but it seems that at line 1324, the value is a `double`. 
+The simplest reason why this error can occur is that, with default settings, the `read_csv` function identifies the types of objects (`character`, `logical`, etc.) in each column of the data frame based on the first 1000 rows. We can verify whether the contents of the first 1000 rows:
+
+```{r}
+unique(lemurs.df[1:1000, "age_of_living_y"])
+```
+
+Thus, we see that missing data in these rows lead to the issue with its identification. 
+We can fix it by explicitly identifying the types of objects in the columns of the data frame.
+Before we do this, however, let's verify that `age_of_living_y` was the only column that raised an issue, with the `problems` attribute of objects read with the `read_*` functions from the `readr` package. 
+This attribute stores parsing problems in a data frame containing the `row` and `col` where `expected` and `actual` values differ.
+
+```{r}
+unique(problems(lemurs.df)$col)
+```
+To facilitate 
+
