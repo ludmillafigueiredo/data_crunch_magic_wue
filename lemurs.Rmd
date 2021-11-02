@@ -4,7 +4,7 @@ author: Dr. Ludmilla Figueiredo
 output: html_notebook
 ---
 
-Here, we are going to use the [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md) dataset provided by the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday) to illustrate:
+Here, we are going to use the [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md) data set provided by the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday) to illustrate:
 
 + data processing with packages from the [Tidyverse](https://www.tidyverse.org)
 + code documentation with RMarkdown and the [minimal set up](https://github.com/ludmillafigueiredo/computational_notebooks) I propose for beginners
@@ -35,9 +35,9 @@ The idea is organizing the project around the `.Rmd` file (the `.html` version o
 By combining descriptive text code and results of the analysis, this "computational notebook" facilitates communication and reproducibility of the work it reports.
 As part of this set up, inputs and outputs can be acessed with relative paths: 
 ```{r}
-processed.dir <- file.path("results", "data", "processed")
-scripts.dir <- file.path("reults", "scripts")
-plots.dir <- file.path("results", "plots")
+processed_dir <- file.path("results", "data", "processed")
+scripts_dir <- file.path("reults", "scripts")
+plots_dir <- file.path("results", "plots")
 ```
 
 
@@ -45,7 +45,7 @@ plots.dir <- file.path("results", "plots")
 
 As shown in the [dataset page](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md), the original data can be downloaded the git repository:
 ```{r}
-lemurs.df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv')
+lemurs_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv')
 ```
 Already at loading, it seems we come across a parsing error: `read_csv` identified the column `age_of_living_y` as containing characters of type `logical` (it cites the expected values as ``1/0/T/F/TRUE/FALSE`), but it seems that at line 1324, the value is a `double`. 
 The simplest reason why this error can occur is that, with default settings, the `read_csv` function identifies the types of objects (`character`, `logical`, etc.) in each column of the data frame based on the first 1000 rows. We can verify whether the contents of the first 1000 rows:
@@ -62,5 +62,236 @@ This attribute stores parsing problems in a data frame containing the `row` and 
 ```{r}
 unique(problems(lemurs.df)$col)
 ```
-To facilitate 
 
+When specifying the columns types, it's all or nothing: we either identify all of them, or none at all.
+Luckily for us, the `spec()` function lists all column types, and we just need to fixed the ones that were read in wrong.
+
+```{r}
+spec(lemurs.df)
+```
+
+```{r}
+lemurs_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv',
+                          col_types = cols(
+                            .default = col_double(),
+                            taxon = col_character(),
+                            dlc_id = col_character(),
+                            hybrid = col_character(),
+                            sex = col_character(),
+                            name = col_character(),
+                            current_resident = col_character(),
+                            stud_book = col_character(),
+                            dob = col_date(format = ""),
+                            birth_month = col_double(),
+                            estimated_dob = col_character(),
+                            birth_type = col_character(),
+                            birth_institution = col_character(),
+                            estimated_concep = col_date(format = ""),
+                            dam_id = col_character(),
+                            dam_name = col_character(),
+                            dam_taxon = col_character(),
+                            dam_dob = col_date(format = ""),
+                            dam_age_at_concep_y = col_double(),
+                            sire_id = col_character(),
+                            sire_name = col_character(),
+                            sire_taxon = col_character(),
+                            sire_dob = col_date(format = ""),
+                            dod = col_date(format = ""),
+                            age_of_living_y = col_double(), ## the column that was tyoed wrong by default
+                            dob_estimated = col_character(),
+                            weight_date = col_date(format = ""),
+                            age_category = col_character(),
+                            preg_status = col_character(),
+                            concep_date_if_preg = col_date(format = ""),
+                            infant_dob_if_preg = col_date(format = "")
+                            )
+)
+```
+
+
+# Explore it
+
+## Reproduction
+
+If we are trying to protect a species, reproduction is one of the most important aspects of a species' life history.
+With the DLC lemur data, we can estimate taxa fertility rates, productive season, and the relationship between age, sizes and offspring production.
+
+### Fertility rates per taxon
+
+TODO: mean and sd number of offspring (measured from litter size, n_offspring, or infant_lt_sz) per female
+```{r}
+lemurs_smallts %>%
+  dplyr::filter(!is.na(infant_lit_sz_if_preg)) %>%
+  dplyr::group_by(dlc_id, taxon) %>%
+  dplyr::summarize(inflt_mean_ind = mean(infant_lit_sz_if_preg)) %>%
+  ungroup() %>%
+  dplyr::group_by(taxon) %>%
+  dplyr::summarize(inflt_mean = mean(inflt_mean_ind),
+                   inflt_sd = sd(inflt_mean_ind),
+                   n = n())
+```
+
+## Main text figures/tables
+
+## Seasonality of species
+TODO: facetted plot of mean and sd number of births for seasonal species
+```{r}
+births_df <- lemurs_smallts %>%
+  dplyr::select(dlc_id, taxon, birth_month) %>%
+  dplyr::filter(!is.na(birth_month)) %>%
+  dplyr::mutate_at(vars(birth_month), 
+                   lubridate::month, label = TRUE, 
+                   locale = Sys.getlocale(category = "LC_CTYPE")) %>% ## id months
+  dplyr::right_join(lemurs_sppnames_df,., by = "taxon") %>% ## id species
+  dplyr::arrange(taxon, birth_month) 
+ 
+months_fct <- lubridate::month(1:12, label = TRUE, locale = Sys.getlocale(category = "LC_CTYPE"))
+
+birth_season_countdf <- births_df %>%
+  unique() %>%
+  dplyr::group_by(species, common_name, taxon, birth_month) %>%
+  dplyr::summarize(n_births = n()) %>%
+  ungroup() %>%
+  dplyr::arrange(species, common_name, taxon, birth_month) %>%
+  tidyr::pivot_wider(id_cols = c(species, common_name, taxon), 
+                     names_from = birth_month, values_from = n_births) %>%
+  tidyr::pivot_longer(all_of(months_fct), 
+                      names_to = "birth_month", values_to = "n_births")%>%
+  ## because strings can't be converted back to months, the following turns out quite cumbersome
+  dplyr::mutate_at(vars(birth_month), 
+                   ~ ordered(.,
+                             levels = all_of(months_fct)) %>%
+                     as.numeric) %>%
+  dplyr::mutate_at(vars(birth_month), 
+                   lubridate::month, label = TRUE,
+                                       locale = Sys.getlocale(category = "LC_CTYPE")) %>%
+  dplyr::arrange(taxon, birth_month) 
+```
+
+```{r}
+births_df  %>%
+  ggplot(aes(x = birth_month, y = species, fill = species)) +
+  geom_density_ridges(alpha=0.6, stat = ) + 
+  ##scale_fill_continuous() +
+  theme_minimal() + 
+  labs(x = "Month", y = "Species") +
+  theme(legend.position = "none")
+```
+
+```{r}
+births_df  %>%
+  ggplot(aes(x = birth_month, fill = species)) +
+  geom_bar(alpha=0.6, stat = "count") + 
+  theme_minimal() + 
+  facet_wrap(~species) +
+  labs(x = "Month", y = "Species") +
+  theme(legend.position = "none")
+```
+Doesn't look that good.
+
+# Offspring production
+```{r}
+offspring_df <- lemurs_smallts %>%
+  dplyr::select(year, month, species, taxon, dlc_id, sex,
+                litter_size, ## size of litter it was born into
+                age_at_wt_y, weight, 
+                preg_status, 
+                n_offspring, ## total number of offspring produced until that day
+                infant_lit_sz_if_preg)
+```
+
+## individual weight vs. litter
+TODO: get minimal weight of each individual (or weight at minimal age), and plot it against against the litter it came from (color males and females differently)
+```{r}
+litterweight_df <- offspring_df %>%
+  dplyr::group_by(dlc_id) %>%
+  dplyr::filter(weight == min(weight)) %>%
+  ungroup()
+
+litterweight_df %>%
+  dplyr::group_by(species) %>%
+  dplyr::summarize(weight_mean = mean(weight),
+                   weight_sd = sd(weight))
+```
+
+```{r}
+litterweight_df  %>%
+  dplyr::filter(sex != "ND") %>%
+  ggplot(aes(x = litter_size, y = weight, colour = species, fill = species, group = species))+
+  geom_point() +
+  geom_smooth(method = lm) +
+  facet_wrap(~sex, ncol = 1) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+TODO: slide do master tem codigo pra diferenciar entre o q ta acontecendo com machos e o q ta acontecendo com femeas
+
+## individual weight vs. offspring production
+get weight of each pregnant individual, and plot it against against the n_offspring it produced
+```{r}
+offspring_df  %>%
+  dplyr::filter(preg_status == "P") %>%
+  ggplot(aes(y = infant_lit_sz_if_preg, x = weight, colour = species))+
+  geom_point(alpha = 0.5) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r}
+offspring_df  %>%
+  dplyr::filter(preg_status == "P") %>%
+  ggplot(aes(y = infant_lit_sz_if_preg, x = weight, colour = species))+
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = lm) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+TODO: get weight of each individual at its oldest, and plot it against the n_offspring it produced. Facet for males and females
+```{r}
+offspring_df  %>%
+  filter(sex != "ND") %>%
+  dplyr::group_by(dlc_id) %>%
+  dplyr::filter(age_at_wt_y == max(age_at_wt_y)) %>%
+  ggplot(aes(y = n_offspring, x = weight, colour = species))+
+  geom_point(alpha = 0.5) +
+  facet_wrap(~sex, ncol = 1) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+```{r}
+offspring_df  %>%
+  filter(sex != "ND") %>%
+  dplyr::group_by(dlc_id) %>%
+  dplyr::filter(age_at_wt_y == max(age_at_wt_y)) %>%
+  ggplot(aes(y = n_offspring, x = weight, colour = species))+
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = lm) +
+  facet_wrap(~sex, ncol = 1) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+## Size difference between sexes
+
+```{r}
+offspring_df  %>%
+  filter(sex != "ND", preg_status == "NP") %>%
+  ggplot(aes(x = sex, y = weight, colour = species))+
+  geom_point(alpha = 0.5) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+females
+
+## Supplementary material
+TODO: daft punk graph of number of births per year, per species
+
+*R version, the OS and attached or loaded packages:*
+<!-- Leave this so people know the software they need to reproduce your work. -->
+```{r}
+sessionInfo()
+```
