@@ -6,18 +6,38 @@ output: html_notebook
 
 Here, we are going to use the [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md) data set provided by the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday) to illustrate:
 
-+ data processing with packages from the [Tidyverse](https://www.tidyverse.org)
-+ code documentation with RMarkdown and the [minimal set up](https://github.com/ludmillafigueiredo/computational_notebooks) I propose for beginners
++ data processing with packages from the [R Tidyverse](https://www.tidyverse.org)
++ document your with RMarkdown and the [minimal set up for reproducible research](https://github.com/ludmillafigueiredo/computational_notebooks) I propose for beginners
 
 
 # Packages and basic set up
 
-In this analysis, we will use the following packages:
-```{r message==FALSE}
-library(tidyverse) # collection of packages for data processing and visualization
-```
+## R packages
 
-Moreover, the files in this project are organized as such:
+In this analysis, we will rely heavily on packages from the [Tidyverse](https://www.tidyverse.org).
+This is a collection of packages that were collectively designed specifically for data science.
+This means that these packages share data structures, function syntax, and can be easily combined in a slick, yet comprehensible workflow. 
+```{r message==FALSE}
+library(tidyverse)
+```
+More specifically, we will work with the following packages:
+
++ `tidyr`: functions to create and manipulate "tidy data", i.e., data where each column is a variable, each row is an observation, and each is unique.
+The other functions in `tidyverse` are optimized to work with this type of data.
+
++ `readr`: functions to easily, yet reliably read in rectangular data (e.g. csv, tsv) containing multiple data types (e.g. numeric, logical). 
+By reliably, I mean that it can recognize errors in that table formatting that require checking by the user (e.g. the occurrence of numeric values in a seemingly logical column). 
+
++ `dplyr`: functions for data manipulation (e.g. filtering, summarizing).
+One of features that make this package particularly good is the fact that functions are names as verbs, indicating the type of data transformation that it does.
+This makes reading the code considerably easy.
+
++ `gglot2`: functions to code graphs following the ("Grammar of Graphics")[https://cfss.uchicago.edu/notes/grammar-of-graphics/].
+Simply put, the grammar of graphics is a system of rules that allows coding data into visual elements - reading the article above and other precise definitions is highly recommendable, though.
+
+## Project set up
+
+The files in this project are organized as such:
 ```{markdown}
 data_crunch_wue
 |--README.md
