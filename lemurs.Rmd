@@ -2,8 +2,7 @@
 title: "I like to move it, move it: Keeping lemurs happy with R"
 author: Dr. Ludmilla Figueiredo
 output: 
-  html_document:
-    code_folding: hide
+  html_document
 ---
 
 Here, we are going to use the [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md) data set provided by the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday) to illustrate:
@@ -19,7 +18,7 @@ Here, we are going to use the [Lemurs](https://github.com/rfordatascience/tidytu
 In this analysis, we will rely heavily on packages from the [Tidyverse](https://www.tidyverse.org).
 This is a collection of packages that were collectively designed specifically for data science.
 This means that these packages share data structures, function syntax, and can be easily combined in a slick, yet comprehensible workflow. 
-```{r message==FALSE}
+```{r message=FALSE}
 library(tidyverse)
 library(lubridate) # easy manipulation of date objects
 ```
@@ -80,7 +79,7 @@ Already at loading, it seems we come across a parsing error: `read_csv` identifi
 The simplest reason why this error can occur is that, with default settings, the `read_csv` function identifies the types of objects (`character`, `logical`, etc.) in each column of the data frame based on the first 1000 rows. We can verify whether the contents of the first 1000 rows:
 
 ```{r}
-unique(lemurs.df[1:1000, "age_of_living_y"])
+unique(lemurs_df[1:1000, "age_of_living_y"])
 ```
 
 Thus, we see that missing data in these rows lead to the issue with its identification. 
@@ -89,14 +88,14 @@ Before we do this, however, let's verify that `age_of_living_y` was the only col
 This attribute stores parsing problems in a data frame containing the `row` and `col` where `expected` and `actual` values differ.
 
 ```{r}
-unique(problems(lemurs.df)$col)
+unique(problems(lemurs_df)$col)
 ```
 
 When specifying the columns types, it's all or nothing: we either identify all of them, or none at all.
 With 54 columns, this would be a lot, but this is where the **magic** starts: the `spec()` function lists all column types, and we just need to fixed the ones that were read in wrong.
 
 ```{r}
-spec(lemurs.df)
+spec(lemurs_df)
 ```
 
 ```{r}
@@ -159,7 +158,7 @@ lemurs_smallts <- dplyr::rename(lemurs_smallts, month = month_of_weight)
 3. In total, 52 variables describing each individual are available in this data set. To start processing it, we do not need all of those, so let's select the ones that are more relevant (chosen based on the column description). Also, we want to simplify some of the columns names.
 ```{r}
 lemurs_smallts <- dplyr::select(lemurs_smallts,
-                                c(year, month_of_weight, ## time variables
+                                c(year, month, ## time variables
                                   taxon, dlc_id, ## id variables
                                   hybrid, sex, name, birth_month, litter_size, concep_month, ## birth variables
                                   dam_id, dam_name, dam_taxon, ## name of mother
@@ -211,8 +210,10 @@ With the DLC lemur data, we can estimate fertility rates, reproductive seasons, 
 
 ### Fertility rates per taxon
 
-```{r}
+Let's have a look at the fertility rates of the species we are trying to save:
+```{r message = FALSE}
 fertiilty_df <- lemurs_smallts %>%
+  dplyr::right_join(lemurs_sppnames_df,., by = "taxon") %>% ## add species names, so we have a complete table
   dplyr::filter(!is.na(infant_lit_sz_if_preg)) %>% ## filter the animals for which this information was available
   dplyr::group_by(dlc_id, species) %>%
   dplyr::summarize(inflt_mean_ind = mean(infant_lit_sz_if_preg)) %>%
@@ -271,11 +272,22 @@ birth_season_countdf <- births_df %>%
 ```
 
 Let's say we would like to plot this:
+```{r, fig.height=10, fig.width=15, fig.caption = "Total number of births that happened on each month of the year"}
+birth_season_countdf  %>%
+  ggplot(aes(x = birth_month, y = n_births, fill = species)) +
+  geom_bar(alpha=0.6, stat = "identity") + 
+  facet_wrap(~species, ncol = 3) +
+  labs(x = "Month", y = "Number of births (mean)") +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 45))
+```
 
+I can define specific aesthetic values to be applied to my plot:
+```{r}
+source("results/scripts/custom_aesthetics.R")
+```
 
-
-
-```{r, fig.height=10, fig.width=15, fig.caption = }
+```{r, fig.height=10, fig.width=15, fig.caption = "Total number of births that happened on each month of the year"}
 birth_season_countdf  %>%
   ggplot(aes(x = birth_month, y = n_births, fill = species)) +
   geom_bar(alpha=0.6, stat = "identity") + 
