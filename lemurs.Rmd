@@ -21,6 +21,7 @@ This is a collection of packages that were collectively designed specifically fo
 This means that these packages share data structures, function syntax, and can be easily combined in a slick, yet comprehensible workflow. 
 ```{r message==FALSE}
 library(tidyverse)
+library(lubridate) # easy manipulation of date objects
 ```
 More specifically, we will work with the following packages:
 
@@ -33,6 +34,8 @@ The other functions in `tidyverse` are optimized to work with this type of data.
 + `dplyr`: functions for data manipulation (e.g. filtering, summarizing).
 One of features that make this package particularly good is the fact that functions are names as verbs, indicating the type of data transformation that it does.
 This makes reading the code considerably easy.
+
++ `stringr`: functions for string manipulation, considering that this is not one of base R strengths.
 
 + `gglot2`: functions to code graphs following the ("Grammar of Graphics")[https://cfss.uchicago.edu/notes/grammar-of-graphics/].
 Simply put, the grammar of graphics is a system of rules that allows coding data into visual elements - reading the article above and other precise definitions is highly recommendable, though.
@@ -47,7 +50,7 @@ data_crunch_wue
 |--figures
 |--results
 |  |--data
-|  |  |--processed 
+|  |  |--raw 
 |  |  |--processed
 |  |--figures
 |  |--tables
@@ -59,13 +62,12 @@ The idea is organizing the project around the `.Rmd` file (the `.html` version o
 By combining descriptive text code and results of the analysis, this "computational notebook" facilitates communication and reproducibility of the work it reports.
 As part of this set up, inputs and outputs can be accessed with relative paths: 
 ```{r}
-processed_dir <- file.path("results", "data", "raw")
+raw_dir <- file.path("results", "data", "raw")
 processed_dir <- file.path("results", "data", "processed")
 scripts_dir <- file.path("reults", "scripts")
 figures_dir <- file.path("results", "figures")
 tables_dir <- file.path("results", "tables")
 ```
-
 
 # Original data
 
@@ -390,6 +392,7 @@ Try exploring the `flights` data set, included with the basic R download.
 ```{r}
 install.packages("nycfilghts13")
 ```
+
 ```{r}
 library(nycflights13)
 ```
