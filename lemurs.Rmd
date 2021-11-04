@@ -1,7 +1,9 @@
 ---
 title: "I like to move it, move it: Keeping lemurs happy with R"
 author: Dr. Ludmilla Figueiredo
-output: html_notebook
+output: 
+  html_document:
+    code_folding: hide
 ---
 
 Here, we are going to use the [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md) data set provided by the [TidyTuesday project](https://github.com/rfordatascience/tidytuesday) to illustrate:
@@ -22,11 +24,11 @@ library(tidyverse)
 ```
 More specifically, we will work with the following packages:
 
-+ `tidyr`: functions to create and manipulate "tidy data", i.e., data where each column is a variable, each row is an observation, and each is unique.
-The other functions in `tidyverse` are optimized to work with this type of data.
-
 + `readr`: functions to easily, yet reliably read in rectangular data (e.g. csv, tsv) containing multiple data types (e.g. numeric, logical). 
 By reliably, I mean that it can recognize errors in that table formatting that require checking by the user (e.g. the occurrence of numeric values in a seemingly logical column). 
+
++ `tidyr`: functions to create and manipulate "tidy data", i.e., data where each column is a variable, each row is an observation, and each is unique.
+The other functions in `tidyverse` are optimized to work with this type of data.
 
 + `dplyr`: functions for data manipulation (e.g. filtering, summarizing).
 One of features that make this package particularly good is the fact that functions are names as verbs, indicating the type of data transformation that it does.
@@ -45,25 +47,30 @@ data_crunch_wue
 |--figures
 |--results
 |  |--data
-|  |  |--processed  
-|  |--plots
+|  |  |--processed 
+|  |  |--processed
+|  |--figures
+|  |--tables
 |  |--scripts
 ```
 
 This file structure adapts the [minimal set up](https://github.com/ludmillafigueiredo/computational_notebooks) I propose for scientific computational projects. 
 The idea is organizing the project around the `.Rmd` file (the `.html` version of which you are reading right now).
 By combining descriptive text code and results of the analysis, this "computational notebook" facilitates communication and reproducibility of the work it reports.
-As part of this set up, inputs and outputs can be acessed with relative paths: 
+As part of this set up, inputs and outputs can be accessed with relative paths: 
 ```{r}
+processed_dir <- file.path("results", "data", "raw")
 processed_dir <- file.path("results", "data", "processed")
 scripts_dir <- file.path("reults", "scripts")
-plots_dir <- file.path("results", "plots")
+figures_dir <- file.path("results", "figures")
+tables_dir <- file.path("results", "tables")
 ```
 
 
 # Original data
 
 As shown in the [dataset page](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-08-24/readme.md), the original data can be downloaded the git repository:
+
 ```{r}
 lemurs_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv')
 ```
@@ -91,7 +98,7 @@ spec(lemurs.df)
 ```
 
 ```{r}
-lemurs_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv',
+lemurs_rawdf <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-08-24/lemur_data.csv',
                           col_types = cols(
                             .default = col_double(),
                             taxon = col_character(),
@@ -127,14 +134,84 @@ lemurs_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/
                             )
 )
 ```
+Let's also load a data frame with the species full names and abbreviations, to use later for more understandable graphs and tables: 
+```{r}
+lemurs_sppnames_df <- readr::read_csv("https://raw.githubusercontent.com/ludmillafigueiredo/computational_notebooks/master/examples/datastudy_r/results/data/raw/lemurs_sppnames.csv")
+```
 
+## Pre-processing
 
-# Explore it
+We have a couple of things to work on in the original table, to make it originally more digestible:
+
+1. The individuals names are capitalized, but it can be annoying to read. Let's capitalize the first letter, only.
+```{r}
+lemurs_smallts <- dplyr::mutate_at(lemurs_rawdf, vars(name, dam_name, sire_name), stringr::str_to_title)
+```
+2. One of the most notable features of this data set is that it started being collected in the 1960's. However, at first glance, there is no clear column stating the date at which the data was collected (I myself expected it to be one of the first columns).
+After reading the data description in the original repo, we learn that the `weight_date` and `month_of_weight` variables report the full date and the month when the weight was measured, respectively. It would be good to have those two easily accessible.
+```{r}
+lemurs_smallts <- dplyr::mutate(lemurs_smallts, year = lubridate::year(weight_date))
+lemurs_smallts <- dplyr::rename(lemurs_smallts, month = month_of_weight)
+```
+3. In total, 52 variables describing each individual are available in this data set. To start processing it, we do not need all of those, so let's select the ones that are more relevant (chosen based on the column description). Also, we want to simplify some of the columns names.
+```{r}
+lemurs_smallts <- dplyr::select(lemurs_smallts,
+                                c(year, month_of_weight, ## time variables
+                                  taxon, dlc_id, ## id variables
+                                  hybrid, sex, name, birth_month, litter_size, concep_month, ## birth variables
+                                  dam_id, dam_name, dam_taxon, ## name of mother
+                                  sire_id, sire_name, sire_taxon, ## name of father
+                                  age_at_death_y, age_of_living_y, age_last_verified_y, ## age variables
+                                  age_max_live_or_dead_y, age_at_wt_y, age_category, ## age variables
+                                  weight_g, avg_daily_wt_change_g, ## weight variables
+                                  preg_status, 
+                                  n_known_offspring, infant_lit_sz_if_preg))
+
+lemurs_smallts <- dplyr::rename(lemurs_smallts,
+                                weight = weight_g,
+                                avg_d_wt_chg = avg_daily_wt_change_g,
+                                n_offspring = n_known_offspring)
+```
+4. Finally, let's add the species full names to the data frame
+```{r}
+lemurs_smallts <- dplyr::right_join(lemurs_sppnames_df, lemurs_smallts, by = "taxon")
+```
+
+However, having that many iterations redefining the same object (the `lemurs_smallts` in this case) is not good practice, because if you forget one of them for some reason, it can lead to errors down the line (e.g. you do transformations on one of the "intermediate" stages). Having multiple objects is also not great, because one would have to name them, and it would be a waste of creativity on temporary files.
+
+With that in mind, let's try some *true magic*: We will put all the transformations together in a **pipeline**, where the transformations are chained in a readable form, any only one data frame is created at the end:
+```{r}
+lemurs_smallts <- lemurs_rawdf %>%
+  # 1. capitalizing the first letter, only
+  dplyr::mutate_at(vars(name, dam_name, sire_name), stringr::str_to_title) %>%
+  # 2. extract the year of the measure, and give a simpler name to the column containing the 
+  dplyr::mutate(year = lubridate::year(weight_date)) %>%
+  dplyr::rename(month = month_of_weight) %>%
+  # 3. select the most relevant 
+  dplyr::select(c(year, month, ## time variables
+                  taxon, dlc_id, ## id variables
+                  hybrid, sex, name, birth_month, litter_size, concep_month, ## birth variables
+                  dam_id, dam_name, dam_taxon, ## name of mother
+                  sire_id, sire_name, sire_taxon, ## name of father
+                  age_at_death_y, age_of_living_y, age_last_verified_y, ## age variables
+                  age_max_live_or_dead_y, age_at_wt_y, age_category, ## age variables
+                  weight_g, avg_daily_wt_change_g, ## weight variables
+                  preg_status, 
+                  n_known_offspring, infant_lit_sz_if_preg)) %>%
+  ## simplify the names
+  dplyr::rename(weight = weight_g,
+                avg_d_wt_chg = avg_daily_wt_change_g,
+                n_offspring = n_known_offspring) %>%
+  # 4. add species full names
+  dplyr::right_join(lemurs_sppnames_df,., by = "taxon") ## id species
+```
+
+# Exploring the data
 
 ## Reproduction
 
-If we are trying to protect a species, reproduction is one of the most important aspects of a species' life history.
-With the DLC lemur data, we can estimate taxa fertility rates, productive season, and the relationship between age, sizes and offspring production.
+If we are trying to protect a species, reproduction is one of the most important aspects to understand.
+With the DLC lemur data, we can estimate fertility rates, reproductive seasons, and the relationship between age, sizes and offspring production.
 
 ### Fertility rates per taxon
 
@@ -305,10 +382,17 @@ offspring_df  %>%
   theme(legend.position = "none")
 ```
 
-females
 
-## Supplementary material
-TODO: daft punk graph of number of births per year, per species
+
+# Next steps
+
+Try exploring the `flights` data set, included with the basic R download.
+```{r}
+install.packages("nycfilghts13")
+```
+```{r}
+library(nycflights13)
+```
 
 *R version, the OS and attached or loaded packages:*
 <!-- Leave this so people know the software they need to reproduce your work. -->
