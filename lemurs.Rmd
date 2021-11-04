@@ -91,7 +91,7 @@ unique(problems(lemurs.df)$col)
 ```
 
 When specifying the columns types, it's all or nothing: we either identify all of them, or none at all.
-Luckily for us, the `spec()` function lists all column types, and we just need to fixed the ones that were read in wrong.
+With 54 columns, this would be a lot, but this is where the **magic** starts: the `spec()` function lists all column types, and we just need to fixed the ones that were read in wrong.
 
 ```{r}
 spec(lemurs.df)
@@ -134,6 +134,7 @@ lemurs_rawdf <- readr::read_csv('https://raw.githubusercontent.com/rfordatascien
                             )
 )
 ```
+
 Let's also load a data frame with the species full names and abbreviations, to use later for more understandable graphs and tables: 
 ```{r}
 lemurs_sppnames_df <- readr::read_csv("https://raw.githubusercontent.com/ludmillafigueiredo/computational_notebooks/master/examples/datastudy_r/results/data/raw/lemurs_sppnames.csv")
@@ -172,14 +173,9 @@ lemurs_smallts <- dplyr::rename(lemurs_smallts,
                                 avg_d_wt_chg = avg_daily_wt_change_g,
                                 n_offspring = n_known_offspring)
 ```
-4. Finally, let's add the species full names to the data frame
-```{r}
-lemurs_smallts <- dplyr::right_join(lemurs_sppnames_df, lemurs_smallts, by = "taxon")
-```
 
 However, having that many iterations redefining the same object (the `lemurs_smallts` in this case) is not good practice, because if you forget one of them for some reason, it can lead to errors down the line (e.g. you do transformations on one of the "intermediate" stages). Having multiple objects is also not great, because one would have to name them, and it would be a waste of creativity on temporary files.
-
-With that in mind, let's try some *true magic*: We will put all the transformations together in a **pipeline**, where the transformations are chained in a readable form, any only one data frame is created at the end:
+With that in mind, let's try some *magic*: We will put all the transformations together in a **pipeline**, where the transformations are chained in a readable form, any only one data frame is created at the end:
 ```{r}
 lemurs_smallts <- lemurs_rawdf %>%
   # 1. capitalizing the first letter, only
@@ -201,9 +197,7 @@ lemurs_smallts <- lemurs_rawdf %>%
   ## simplify the names
   dplyr::rename(weight = weight_g,
                 avg_d_wt_chg = avg_daily_wt_change_g,
-                n_offspring = n_known_offspring) %>%
-  # 4. add species full names
-  dplyr::right_join(lemurs_sppnames_df,., by = "taxon") ## id species
+                n_offspring = n_known_offspring)
 ```
 
 # Exploring the data
@@ -215,23 +209,45 @@ With the DLC lemur data, we can estimate fertility rates, reproductive seasons, 
 
 ### Fertility rates per taxon
 
-TODO: mean and sd number of offspring (measured from litter size, n_offspring, or infant_lt_sz) per female
 ```{r}
-lemurs_smallts %>%
-  dplyr::filter(!is.na(infant_lit_sz_if_preg)) %>%
-  dplyr::group_by(dlc_id, taxon) %>%
+fertiilty_df <- lemurs_smallts %>%
+  dplyr::filter(!is.na(infant_lit_sz_if_preg)) %>% ## filter the animals for which this information was available
+  dplyr::group_by(dlc_id, species) %>%
   dplyr::summarize(inflt_mean_ind = mean(infant_lit_sz_if_preg)) %>%
   ungroup() %>%
-  dplyr::group_by(taxon) %>%
+  dplyr::group_by(species) %>%
   dplyr::summarize(inflt_mean = mean(inflt_mean_ind),
                    inflt_sd = sd(inflt_mean_ind),
-                   n = n())
+                   n = n()) %>%
+  dplyr::rename(Species = species,
+                "Infant litter size (mean)" = inflt_mean,
+                "Infant litter size (sd)" = inflt_sd)
 ```
+We can save this table
+```{r}
+readr::write_csv(fertiilty_df, file = file.path(tables_dir, "fertility_rates.csv"))
+```
+
+Or have it nicely displayed in our html file:
+```{r}
+fertiilty_df %>%
+   kableExtra::kbl(caption = "Fertility rates (mean +- sd) of the species housed at the Duke Lemur Center, in North Carolina, USA.")%>%
+  kableExtra::kable_styling(c("striped", "hover")) %>%
+  kableExtra::scroll_box(width = "100%", height = "300px")
+```
+
+**Question:** one could argue that this summary is hiding some valuable information. Any guesses?
 
 ## Main text figures/tables
 
 ## Seasonality of species
-TODO: facetted plot of mean and sd number of births for seasonal species
+
+Many species of lemurs are seasonal breeders, meaning that are specific times of the year when animal will look for partners and reproduce. 
+Let's see if we can detect it in data.
+
+First, I know that the data contains the dates in numeric form, but it would be nice to have the names of each month in data, for later plotting Remember, we are obeying the Grammar of Graphics, so we cannot simply paste tags with the names of months later on.
+
+So, we start with a simple data frame with the relevant information: individuals id, taxon, and month of birth.
 ```{r}
 births_df <- lemurs_smallts %>%
   dplyr::select(dlc_id, taxon, birth_month) %>%
@@ -241,50 +257,34 @@ births_df <- lemurs_smallts %>%
                    locale = Sys.getlocale(category = "LC_CTYPE")) %>% ## id months
   dplyr::right_join(lemurs_sppnames_df,., by = "taxon") %>% ## id species
   dplyr::arrange(taxon, birth_month) 
- 
-months_fct <- lubridate::month(1:12, label = TRUE, locale = Sys.getlocale(category = "LC_CTYPE"))
-
+```
+Now, let's count the number of births that happened per species, per month:
+```{r}
 birth_season_countdf <- births_df %>%
   unique() %>%
   dplyr::group_by(species, common_name, taxon, birth_month) %>%
   dplyr::summarize(n_births = n()) %>%
   ungroup() %>%
-  dplyr::arrange(species, common_name, taxon, birth_month) %>%
-  tidyr::pivot_wider(id_cols = c(species, common_name, taxon), 
-                     names_from = birth_month, values_from = n_births) %>%
-  tidyr::pivot_longer(all_of(months_fct), 
-                      names_to = "birth_month", values_to = "n_births")%>%
-  ## because strings can't be converted back to months, the following turns out quite cumbersome
-  dplyr::mutate_at(vars(birth_month), 
-                   ~ ordered(.,
-                             levels = all_of(months_fct)) %>%
-                     as.numeric) %>%
-  dplyr::mutate_at(vars(birth_month), 
-                   lubridate::month, label = TRUE,
-                                       locale = Sys.getlocale(category = "LC_CTYPE")) %>%
-  dplyr::arrange(taxon, birth_month) 
+  dplyr::arrange(species, common_name, taxon, birth_month) 
 ```
 
-```{r}
-births_df  %>%
-  ggplot(aes(x = birth_month, y = species, fill = species)) +
-  geom_density_ridges(alpha=0.6, stat = ) + 
-  ##scale_fill_continuous() +
-  theme_minimal() + 
-  labs(x = "Month", y = "Species") +
-  theme(legend.position = "none")
+Let's say we would like to plot this:
+
+
+
+
+```{r, fig.height=10, fig.width=15, fig.caption = }
+birth_season_countdf  %>%
+  ggplot(aes(x = birth_month, y = n_births, fill = species)) +
+  geom_bar(alpha=0.6, stat = "identity") + 
+  theme_lemurs() + 
+  facet_wrap(~species, ncol = 3) +
+  labs(x = "Month", y = "Number of births (mean)") +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 45))
 ```
 
-```{r}
-births_df  %>%
-  ggplot(aes(x = birth_month, fill = species)) +
-  geom_bar(alpha=0.6, stat = "count") + 
-  theme_minimal() + 
-  facet_wrap(~species) +
-  labs(x = "Month", y = "Species") +
-  theme(legend.position = "none")
-```
-Doesn't look that good.
+**Question:** If we were talking to a larger audience, we could include the common names of the species in this graph, how would we go about ?
 
 # Offspring production
 ```{r}
