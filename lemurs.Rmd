@@ -297,105 +297,123 @@ birth_season_countdf  %>%
   theme(legend.position = "none", 
         axis.text.x = element_text(angle = 45))
 ```
+**Challenge:** there is a mistake in this summary. What is it?
 
 **Question:** If we were talking to a larger audience, we could include the common names of the species in this graph, how would we go about ?
 
-# Offspring production
+## Offspring production
+
 ```{r}
 offspring_df <- lemurs_smallts %>%
+  dplyr::right_join(lemurs_sppnames_df,., by = "taxon") %>% ## id species
   dplyr::select(year, month, species, taxon, dlc_id, sex,
                 litter_size, ## size of litter it was born into
-                age_at_wt_y, weight, 
-                preg_status, 
+                age_at_wt_y, weight, ## age and weight
+                preg_status, ## pregnancy status
                 n_offspring, ## total number of offspring produced until that day
-                infant_lit_sz_if_preg)
+                infant_lit_sz_if_preg) ## size of litter, if pregnant
 ```
 
-## individual weight vs. litter
-TODO: get minimal weight of each individual (or weight at minimal age), and plot it against against the litter it came from (color males and females differently)
+### Individual female weight and offspring production
+
+Let's see if we can find some relationship between pregnant female weight and the size of the litter it is carrying.
+
+First, let's look into species separately:
+```{r, fig.height = 25, fig.width=15}
+offspring_df  %>%
+  ## filter only the pregnant females
+  dplyr::filter(preg_status == "P") %>%
+  ## get their last measurement  while pregnant
+  dplyr::group_by(dlc_id) %>%
+  dplyr::filter(age_at_wt_y == max(age_at_wt_y)) %>%
+  ungroup() %>%
+  ggplot(aes(x = weight, y = litter_size))+
+  geom_point(alpha = 0.2) +
+  facet_wrap(~species, ncol = 3, scales = "free") +
+  labs(x = "Weight (log(g))", y = "Species", size = "Infant litter size") +
+  theme_lemurs()
+```
+
+This was not very informative, but let's see if we can have a summarized graph, at least
+```{r}
+offspring_df  %>%
+  ## filter only the pregnant females
+  dplyr::filter(preg_status == "P") %>%
+  ## get their last measurement  while pregnant
+  dplyr::group_by(dlc_id) %>%
+  dplyr::filter(age_at_wt_y == max(age_at_wt_y)) %>%
+  ungroup() %>%
+  ggplot(aes(x = log(weight), y = species))+
+  geom_point(aes(size = infant_lit_sz_if_preg), alpha = 0.2) +
+  labs(x = "Weight (log(g))", y = "Species", size = "Infant litter size") +
+  theme_lemurs()
+```
+
+### Individual weight and litter size
+Is individual's weight affected by the size of the litter it was in?
+Get individual's weight at its younger age and plot it against against the litter it came from (separate males and females differently)
 ```{r}
 litterweight_df <- offspring_df %>%
   dplyr::group_by(dlc_id) %>%
-  dplyr::filter(weight == min(weight)) %>%
+  dplyr::filter(age_at_wt_y == min(age_at_wt_y)) %>% ## filter for the younger age of a single individual
   ungroup()
+```
 
+#### Mean infant weight
+
+```{r}
 litterweight_df %>%
   dplyr::group_by(species) %>%
   dplyr::summarize(weight_mean = mean(weight),
-                   weight_sd = sd(weight))
+                   weight_sd = sd(weight)) %>%
+  dplyr::arrange(weight_mean)  %>%
+   kableExtra::kbl(caption = "Infant size (mean +- sd) of the species housed at the Duke Lemur Center, in North Carolina, USA.")%>%
+  kableExtra::kable_styling(c("striped", "hover")) %>%
+  kableExtra::scroll_box(width = "100%", height = "300px")
+```
+
+#### Mean litter size
+```{r}
+litterweight_df %>%
+  dplyr::group_by(species) %>%
+  dplyr::summarize(litter_mean = mean(litter_size),
+                   litter_sd = sd(litter_size)) %>%
+  dplyr::arrange(litter_mean)  %>%
+   kableExtra::kbl(caption = "Litter size (mean +- sd) of the species housed at the Duke Lemur Center, in North Carolina, USA.")%>%
+  kableExtra::kable_styling(c("striped", "hover")) %>%
+  kableExtra::scroll_box(width = "100%", height = "300px")
+```
+```{r}
+litterweight_df %>%
+  dplyr::group_by(species) %>%
+  dplyr::summarize(litter_mean = mean(litter_size, na.rm = TRUE),
+                   litter_sd = sd(litter_size, na.rm = TRUE)) %>%
+  dplyr::arrange(litter_mean)  %>%
+   kableExtra::kbl(caption = "Litter size (mean +- sd) of the species housed at the Duke Lemur Center, in North Carolina, USA.")%>%
+  kableExtra::kable_styling(c("striped", "hover")) %>%
+  kableExtra::scroll_box(width = "100%", height = "300px")
 ```
 
 ```{r}
 litterweight_df  %>%
   dplyr::filter(sex != "ND") %>%
-  ggplot(aes(x = litter_size, y = weight, colour = species, fill = species, group = species))+
-  geom_point() +
-  geom_smooth(method = lm) +
-  facet_wrap(~sex, ncol = 1) +
-  theme_minimal() +
-  theme(legend.position = "none")
+  ggplot(aes(x = log(weight), y = species))+
+  geom_point(aes(size = litter_size), alpha = 0.2) +
+  facet_wrap(~sex, ncol = 2) +
+  labs(x = "Weight (log(g))", y = "Species", size = "Litter size") + 
+  theme_lemurs()
 ```
-TODO: slide do master tem codigo pra diferenciar entre o q ta acontecendo com machos e o q ta acontecendo com femeas
 
-## individual weight vs. offspring production
-get weight of each pregnant individual, and plot it against against the n_offspring it produced
+Let's try a more summarized version of it, this time differentiating males and females.
 ```{r}
-offspring_df  %>%
-  dplyr::filter(preg_status == "P") %>%
-  ggplot(aes(y = infant_lit_sz_if_preg, x = weight, colour = species))+
-  geom_point(alpha = 0.5) +
-  theme_minimal() +
-  theme(legend.position = "none")
+litterweight_df  %>%
+  dplyr::filter(sex != "ND") %>%
+  ggplot(aes(x = log(weight), y = species))+
+  geom_point(aes(size = litter_size), alpha = 0.2) +
+  facet_wrap(~sex, ncol = 2) +
+  labs(x = "Weight (log(g))", y = "Species", size = "Litter size") + 
+  theme_lemurs()
 ```
-
-```{r}
-offspring_df  %>%
-  dplyr::filter(preg_status == "P") %>%
-  ggplot(aes(y = infant_lit_sz_if_preg, x = weight, colour = species))+
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = lm) +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
-
-TODO: get weight of each individual at its oldest, and plot it against the n_offspring it produced. Facet for males and females
-```{r}
-offspring_df  %>%
-  filter(sex != "ND") %>%
-  dplyr::group_by(dlc_id) %>%
-  dplyr::filter(age_at_wt_y == max(age_at_wt_y)) %>%
-  ggplot(aes(y = n_offspring, x = weight, colour = species))+
-  geom_point(alpha = 0.5) +
-  facet_wrap(~sex, ncol = 1) +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
-
-
-```{r}
-offspring_df  %>%
-  filter(sex != "ND") %>%
-  dplyr::group_by(dlc_id) %>%
-  dplyr::filter(age_at_wt_y == max(age_at_wt_y)) %>%
-  ggplot(aes(y = n_offspring, x = weight, colour = species))+
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = lm) +
-  facet_wrap(~sex, ncol = 1) +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
-
-## Size difference between sexes
-
-```{r}
-offspring_df  %>%
-  filter(sex != "ND", preg_status == "NP") %>%
-  ggplot(aes(x = sex, y = weight, colour = species))+
-  geom_point(alpha = 0.5) +
-  theme_minimal() +
-  theme(legend.position = "none")
-```
-
 
 
 # Next steps
