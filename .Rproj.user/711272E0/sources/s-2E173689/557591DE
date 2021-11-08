@@ -1,0 +1,27 @@
+{
+    "id": "557591DE",
+    "path": "~/work/side_projects/data_crunch_magic_wue/lemurs.Rmd",
+    "project_path": "lemurs.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1635084302860.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "chunk_output_type": "inline",
+        "cursorPosition": "220,0",
+        "scrollLine": "197",
+        "docOutlineVisible": "1"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1636396404,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1636396404235,
+    "read_only": false,
+    "read_only_alternatives": []
+}

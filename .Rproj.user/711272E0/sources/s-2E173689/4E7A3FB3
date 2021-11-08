@@ -1,0 +1,32 @@
+{
+    "id": "4E7A3FB3",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1636048825392.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "expression": "lemurs_sppnames_df",
+        "caption": "lemurs_sppnames_df",
+        "totalObservations": 27,
+        "displayedObservations": 27,
+        "variables": 3,
+        "cacheKey": "9759118F",
+        "object": "lemurs_sppnames_df",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=lemurs_sppnames_df&cache_key=9759118F&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 3471765372178411571,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1636048825392,
+    "read_only": false,
+    "read_only_alternatives": []
+}

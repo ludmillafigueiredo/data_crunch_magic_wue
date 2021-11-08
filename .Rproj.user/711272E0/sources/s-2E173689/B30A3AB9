@@ -1,0 +1,32 @@
+{
+    "id": "B30A3AB9",
+    "path": null,
+    "project_path": null,
+    "type": "r_dataframe",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1636049918569.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "expression": "lemurs_rawdf",
+        "caption": "lemurs_rawdf",
+        "totalObservations": 82609,
+        "displayedObservations": 82609,
+        "variables": 54,
+        "cacheKey": "5A4BCE7F",
+        "object": "lemurs_rawdf",
+        "environment": "",
+        "contentUrl": "grid_resource/gridviewer.html?env=&obj=lemurs_rawdf&cache_key=5A4BCE7F&max_cols=50",
+        "preview": 0
+    },
+    "folds": "",
+    "lastKnownWriteTime": 3085235347696,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1636049918569,
+    "read_only": false,
+    "read_only_alternatives": []
+}
