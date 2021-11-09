@@ -5,3 +5,5 @@ I used the [Lemurs](https://github.com/rfordatascience/tidytuesday/blob/master/d
 
 + data processing with packages from the [Tidyverse](https://www.tidyverse.org)
 + code documentation with RMarkdown and the [minimal set up](https://github.com/ludmillafigueiredo/computational_notebooks) I propose for beginners
+
+No copyright infringement intended (all media and data come from open sources). Nonetheless, if some slipped, please let me know if you own material included here and would like it to be removed.
